@@ -89,7 +89,7 @@ function handleInitChoice(answer){
 
 const viewDeparments = async () => {
   [ rows, fields ] = await db.query('SELECT * FROM Departments;')
-  console.table(rows)
+  console.table(rows, [`dept_id`, `dept_name`])
   init();
 }
 
@@ -166,13 +166,20 @@ const addRole = async() => {
 
 const addEmployee = async() => {
   let roleArray =[];
-  const [rows] = await db.query("SELECT * FROM Roles;")
-  for(i = 0; i < rows.length; i++) {
-    roleArray.push(rows[i].role_id+"-"+rows[i].role_title)
+  const [roleRows] = await db.query("SELECT * FROM Roles;")
+  for(i = 0; i < roleRows.length; i++) {
+    roleArray.push(roleRows[i].role_id+"-"+roleRows[i].role_title)
   }
 
+  // also push NO Manager to equal NULL 
+  let managerArray = []
+  const [managerRows] = await db.query("SELECT * FROM Employees;")
+  for(i = 0; i < managerRows.length; i++) {
+    managerArray.push(managerRows[i].emp_id+"-"+`${managerRows[i].first_name} ${managerRows[i].last_name}`)
+  }
+  managerArray.push('None')
   // console.log(rows)
-  // console.log(roleArray)
+  // console.log(managerArray)
 
   const addEmployeeQ = [
     {
@@ -190,22 +197,24 @@ const addEmployee = async() => {
       type: `list`,
       choices: roleArray,
       name: `addEmpRole`
+    },
+    {
+      message: `Select a manager for employee`,
+      type: `list`,
+      choices: managerArray,
+      name: `addManager`
     }
-    // For when I figure out how to add Manager
-    // ,
-    // {
-    //   message: `Does the Employee have manager ID? (Enter 'Return' if None)`,
-    //   type: `input`,
-    //   name: `addManagerID`
-    // }
   ]
 
   const data = await inquirer.prompt(addEmployeeQ)
 
-  await db.query(`INSERT INTO Employees (first_name, last_name, emp_role_id) VALUES ('${data.addEmpFirstName}', '${data.addEmpLastName}', '${data.addEmpRole[0].split('-')}');`,)
+  if (data.addManager === 'None') {
+    await db.query(`INSERT INTO Employees (first_name, last_name, emp_role_id, manager_id) VALUES ('${data.addEmpFirstName}', '${data.addEmpLastName}', '${data.addEmpRole[0].split('-')}', NULL);`,)
 
-  // When I figure out how to add Manager
-  // await db.query(`INSERT INTO Employees (first_name, last_name, emp_role_id, manager_id) VALUES ('${data.addEmpFirstName}', '${data.addEmpLastName}', '${data.addEmpRole[0].split('-')}', '${data.addManagerID}');`,)
+  } else {
+    await db.query(`INSERT INTO Employees (first_name, last_name, emp_role_id, manager_id) VALUES ('${data.addEmpFirstName}', '${data.addEmpLastName}', '${data.addEmpRole[0].split('-')}', '${data.addManager[0].split('-')}' );`,)
+
+  }
 
   console.log( `Succesfully Added ${data.addEmpFirstName} ${data.addEmpLastName} `),
   init()
